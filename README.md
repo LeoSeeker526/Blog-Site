@@ -4,7 +4,7 @@ A modern, full-stack blogging platform built with Next.js 15, TypeScript, tRPC, 
 
 🔗 **Live Demo**: [https://blog-site-a-one.vercel.app/](https://blog-site-a-one.vercel.app/)
 
-## ✨ Features
+##  Features
 
 ### Core Functionality
 - **User Authentication** - Custom JWT-based auth with bcrypt password hashing
@@ -51,7 +51,7 @@ A modern, full-stack blogging platform built with Next.js 15, TypeScript, tRPC, 
 - **Database Hosting**: Neon
 - **Version Control**: Git & GitHub
 
-## 📦 Installation
+##  Installation
 
 ### Prerequisites
 - Node.js 20.9 or later
@@ -100,7 +100,7 @@ npm run dev
 
 Visit [http://localhost:3000](http://localhost:3000) to see your blog!
 
-## 📁 Project Structure
+##  Project Structure
 
 ```
 blog-platform/
@@ -150,7 +150,7 @@ blog-platform/
 └── package.json                # Dependencies
 ```
 
-## 🚀 Available Scripts
+##  Available Scripts
 
 ```bash
 # Development
@@ -171,7 +171,7 @@ npm run db:reset        # Reset database (drop & recreate all tables)
 npm run lint            # Run ESLint
 ```
 
-## 📝 Usage Guide
+##  Usage Guide
 
 ### For Users
 
@@ -223,7 +223,7 @@ export const exampleRouter = createTRPCRouter({
 const { data } = trpc.example.hello.useQuery({ name: "World" });
 ```
 
-## 🔒 Authentication
+##  Authentication
 
 The platform uses a custom JWT-based authentication system:
 
@@ -263,7 +263,7 @@ The platform uses a custom JWT-based authentication system:
 - `category_id` (foreign key → categories.id)
 - Primary key: (post_id, category_id)
 
-## 🎨 UI Components
+##  UI Components
 
 Built with **shadcn/ui** for consistency and accessibility:
 
@@ -278,7 +278,7 @@ Built with **shadcn/ui** for consistency and accessibility:
 - Separator
 - Tabs
 
-## 🌐 Deployment
+##  Deployment
 
 ### Deploy to Vercel
 
@@ -296,7 +296,7 @@ Vercel will automatically:
 - Deploy to production
 - Set up continuous deployment
 
-## 🐛 Known Issues & Limitations
+##  Known Issues & Limitations
 
 - No email verification for registration
 - No password reset functionality
@@ -305,7 +305,7 @@ Vercel will automatically:
 - No comment system
 - No search functionality
 
-## 🔮 Future Enhancements
+##  Future Enhancements
 
 - [ ] Image upload and management
 - [ ] Comment system with moderation
@@ -320,19 +320,19 @@ Vercel will automatically:
 - [ ] SEO optimization
 - [ ] RSS feed
 
-## 🤝 Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## 📄 License
+##  License
 
 This project is open source and available under the [MIT License](LICENSE).
 
-## 👤 Author
+##  Author
 
 Built as part of a full-stack development assessment.
+- Developed by Adrian D Silva
+- **Email**: adriansdsilva@gmail.com
+- **GitHub**: [LeoSeeker526](https://github.com/LeoSeeker526)
 
-## 🙏 Acknowledgments
+##  Acknowledgments
 
 - **Next.js** - The React framework for production
 - **Vercel** - Hosting and deployment platform
@@ -343,4 +343,4 @@ Built as part of a full-stack development assessment.
 
 ---
 
-Made with ❤️ using Next.js and TypeScript
+Made with  using Next.js and TypeScript
