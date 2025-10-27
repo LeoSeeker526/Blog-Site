@@ -2,20 +2,20 @@ import { initTRPC, TRPCError } from "@trpc/server";
 import { cache } from "react";
 import superjson from "superjson";
 import { db } from "@/db";
+import { getSession } from "@/lib/auth";
 
-// Create context for each request
 export const createTRPCContext = cache(async () => {
+  const session = await getSession();
+
   return {
     db,
-    // You can add authentication here later:
-    // session: await auth(),
+    session,
+    userId: session?.userId,
   };
 });
 
-// Export type for use in other files
 export type Context = Awaited<ReturnType<typeof createTRPCContext>>;
 
-// Initialize tRPC with context
 const t = initTRPC.context<Context>().create({
   transformer: superjson,
   errorFormatter({ shape, error }) {
@@ -32,9 +32,19 @@ const t = initTRPC.context<Context>().create({
   },
 });
 
-// Export reusable router and procedure builders
 export const createTRPCRouter = t.router;
 export const createCallerFactory = t.createCallerFactory;
 
-// Base procedure - available to everyone
 export const publicProcedure = t.procedure;
+
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.userId) {
+    throw new TRPCError({ code: "UNAUTHORIZED", message: "You must be logged in" });
+  }
+  return next({
+    ctx: {
+      ...ctx,
+      userId: ctx.userId,
+    },
+  });
+});

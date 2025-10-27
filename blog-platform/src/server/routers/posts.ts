@@ -175,51 +175,66 @@ export const postsRouter = createTRPCRouter({
     }),
 
   // Create a new post
-  create: publicProcedure
-    .input(
-      z.object({
-        title: z.string().min(1).max(255),
-        content: z.string().min(1),
-        slug: z.string().min(1).max(255),
-        published: z.boolean().default(false),
-        categoryIds: z.array(z.number()).optional(),
+create: publicProcedure
+  .input(
+    z.object({
+      title: z.string().min(1).max(255),
+      content: z.string().min(1),
+      slug: z.string().min(1).max(255),
+      published: z.boolean().default(false),
+      categoryIds: z.array(z.number()).optional(),
+    })
+  )
+  .mutation(async ({ ctx, input }) => {
+    const { categoryIds, ...postData } = input;
+
+    // Debug: Log the userId
+    console.log("Creating post with userId:", ctx.userId);
+
+    if (!ctx.userId) {
+      throw new TRPCError({
+        code: "UNAUTHORIZED",
+        message: "You must be logged in to create a post",
+      });
+    }
+
+    const existingPost = await ctx.db
+      .select()
+      .from(posts)
+      .where(eq(posts.slug, postData.slug))
+      .limit(1);
+
+    if (existingPost.length > 0) {
+      throw new TRPCError({
+        code: "CONFLICT",
+        message: "A post with this slug already exists",
+      });
+    }
+
+    // Explicitly set userId
+    const [newPost] = await ctx.db
+      .insert(posts)
+      .values({
+        title: postData.title,
+        content: postData.content,
+        slug: postData.slug,
+        published: postData.published,
+        userId: ctx.userId, // Explicitly pass userId as a number
       })
-    )
-    .mutation(async ({ ctx, input }) => {
-      const { categoryIds, ...postData } = input;
+      .returning();
 
-      // Check if slug already exists
-      const existingPost = await ctx.db
-        .select()
-        .from(posts)
-        .where(eq(posts.slug, postData.slug))
-        .limit(1);
+    if (categoryIds && categoryIds.length > 0) {
+      await ctx.db.insert(postCategories).values(
+        categoryIds.map((categoryId) => ({
+          postId: newPost.id,
+          categoryId,
+        }))
+      );
+    }
 
-      if (existingPost.length > 0) {
-        throw new TRPCError({
-          code: "CONFLICT",
-          message: "A post with this slug already exists",
-        });
-      }
+    return newPost;
+  }),
 
-      // Insert the post
-      const [newPost] = await ctx.db
-        .insert(posts)
-        .values(postData)
-        .returning();
-
-      // Add category relationships if provided
-      if (categoryIds && categoryIds.length > 0) {
-        await ctx.db.insert(postCategories).values(
-          categoryIds.map((categoryId) => ({
-            postId: newPost.id,
-            categoryId,
-          }))
-        );
-      }
-
-      return newPost;
-    }),
 
   // Update a post
   update: publicProcedure
