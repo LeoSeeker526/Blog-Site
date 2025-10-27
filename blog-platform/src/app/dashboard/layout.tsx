@@ -21,9 +21,6 @@ export default function DashboardLayout({
             <Link href="/dashboard/posts/new">
               <Button>New Post</Button>
             </Link>
-            <Link href="/dashboard/categories">
-              <Button variant="ghost">Categories</Button>
-            </Link>
           </nav>
         </div>
       </header>

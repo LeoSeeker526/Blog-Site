@@ -8,9 +8,7 @@ export default function EditPostPage() {
   const params = useParams();
   const postId = parseInt(params.id as string);
 
-  const { data: posts, isLoading } = trpc.posts.getAll.useQuery({ limit: 100 });
-  
-  const post = posts?.items.find((p) => p.id === postId);
+  const { data: post, isLoading } = trpc.posts.getById.useQuery({ id: postId });
 
   if (isLoading) {
     return (

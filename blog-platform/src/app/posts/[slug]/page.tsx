@@ -7,8 +7,6 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-import rehypeRaw from "rehype-raw";
 
 export default function PostPage() {
   const params = useParams();
@@ -63,6 +61,22 @@ export default function PostPage() {
           <Card>
             <CardContent className="pt-8">
               <div className="mb-8">
+                {/* Categories */}
+                {post.categories && post.categories.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {post.categories.map((cat: any) => (
+                      <Link key={cat.id} href={`/?category=${cat.id}`}>
+                        <Badge 
+                          variant="secondary" 
+                          className="cursor-pointer hover:bg-gray-300"
+                        >
+                          {cat.name}
+                        </Badge>
+                      </Link>
+                    ))}
+                  </div>
+                )}
+                
                 <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
                 <div className="flex items-center gap-4 text-sm text-gray-600">
                   <time dateTime={post.createdAt.toString()}>
@@ -78,14 +92,8 @@ export default function PostPage() {
                 </div>
               </div>
 
-              {/* Enhanced Markdown with plugins */}
               <div className="prose prose-lg max-w-none prose-headings:font-bold prose-a:text-blue-600 prose-strong:text-gray-900">
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw]}
-                >
-                  {post.content}
-                </ReactMarkdown>
+                <ReactMarkdown>{post.content}</ReactMarkdown>
               </div>
 
               <div className="mt-12 pt-6 border-t">

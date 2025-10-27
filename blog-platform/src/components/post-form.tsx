@@ -13,6 +13,7 @@ import { slugify } from "@/lib/slugify";
 import { trpc } from "@/trpc/client";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { X } from "lucide-react";
 
 // Zod schema for post validation
 const postSchema = z.object({
@@ -20,12 +21,16 @@ const postSchema = z.object({
   content: z.string().min(1, "Content is required"),
   slug: z.string().min(1, "Slug is required").max(255),
   published: z.boolean(),
+  categoryIds: z.array(z.number()).optional(),
 });
 
 type PostFormData = z.infer<typeof postSchema>;
 
 interface PostFormProps {
-  initialData?: Partial<PostFormData> & { id?: number };
+  initialData?: Partial<PostFormData> & { 
+    id?: number;
+    categories?: Array<{ id: number; name: string; slug: string }>;
+  };
   mode: "create" | "edit";
 }
 
@@ -33,6 +38,12 @@ export function PostForm({ initialData, mode }: PostFormProps) {
   const router = useRouter();
   const utils = trpc.useUtils();
   const [autoSlug, setAutoSlug] = useState(true);
+  const [selectedCategories, setSelectedCategories] = useState<number[]>(
+    initialData?.categories?.map(c => c.id) || []
+  );
+
+  // Fetch all categories
+  const { data: allCategories } = trpc.categories.getAll.useQuery();
 
   const {
     register,
@@ -47,14 +58,13 @@ export function PostForm({ initialData, mode }: PostFormProps) {
       content: initialData?.content || "",
       slug: initialData?.slug || "",
       published: initialData?.published || false,
+      categoryIds: initialData?.categories?.map(c => c.id) || [],
     },
   });
 
-  // Watch title for auto-slug generation
   const title = watch("title");
   const published = watch("published");
 
-  // Auto-generate slug from title
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newTitle = e.target.value;
     if (autoSlug && newTitle) {
@@ -62,7 +72,16 @@ export function PostForm({ initialData, mode }: PostFormProps) {
     }
   };
 
-  // Create mutation
+  const toggleCategory = (categoryId: number) => {
+    setSelectedCategories((prev) => {
+      const newSelection = prev.includes(categoryId)
+        ? prev.filter((id) => id !== categoryId)
+        : [...prev, categoryId];
+      setValue("categoryIds", newSelection);
+      return newSelection;
+    });
+  };
+
   const createPost = trpc.posts.create.useMutation({
     onSuccess: () => {
       utils.posts.getAll.invalidate();
@@ -70,7 +89,6 @@ export function PostForm({ initialData, mode }: PostFormProps) {
     },
   });
 
-  // Update mutation
   const updatePost = trpc.posts.update.useMutation({
     onSuccess: () => {
       utils.posts.getAll.invalidate();
@@ -137,6 +155,40 @@ export function PostForm({ initialData, mode }: PostFormProps) {
             {errors.slug && (
               <p className="text-sm text-red-500">{errors.slug.message}</p>
             )}
+          </div>
+
+          {/* Categories */}
+          <div className="space-y-2">
+            <Label>Categories (Optional)</Label>
+            <div className="border rounded-lg p-4">
+              {allCategories && allCategories.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {allCategories.map((category) => {
+                    const isSelected = selectedCategories.includes(category.id);
+                    return (
+                      <button
+                        key={category.id}
+                        type="button"
+                        onClick={() => toggleCategory(category.id)}
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
+                          isSelected
+                            ? "bg-blue-600 text-white"
+                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                        }`}
+                      >
+                        {category.name}
+                        {isSelected && <X className="inline-block w-3 h-3 ml-1" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No categories available</p>
+              )}
+            </div>
+            <p className="text-xs text-gray-500">
+              Selected: {selectedCategories.length} categor{selectedCategories.length === 1 ? "y" : "ies"}
+            </p>
           </div>
 
           {/* Content */}
