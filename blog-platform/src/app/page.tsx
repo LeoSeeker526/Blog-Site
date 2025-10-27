@@ -1,71 +1,86 @@
 "use client";
 
 import { trpc } from "@/trpc/client";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import Link from "next/link";
 
 export default function HomePage() {
-  // Use tRPC hooks directly - no .queryOptions()
-  const { data: postsData, isLoading: postsLoading, error: postsError } = 
-    trpc.posts.getAll.useQuery({
-      published: true,
-      limit: 10,
-    });
+  const { data: postsData, isLoading } = trpc.posts.getAll.useQuery({
+    published: true,
+    limit: 10,
+  });
 
-  // Fetch all categories
-  const { data: categoriesData, isLoading: categoriesLoading } = 
-    trpc.categories.getAll.useQuery();
-
-  if (postsLoading || categoriesLoading) {
-    return <div className="p-8">Loading...</div>;
-  }
-
-  if (postsError) {
-    return <div className="p-8">Error: {postsError.message}</div>;
-  }
+  const { data: categories } = trpc.categories.getAll.useQuery();
 
   return (
-    <div className="min-h-screen p-8">
-      <h1 className="text-4xl font-bold mb-8">Blog Posts</h1>
-      
-      <div className="mb-8">
-        <h2 className="text-2xl font-semibold mb-4">Categories</h2>
-        <div className="flex gap-2 flex-wrap">
-          {categoriesData?.map((category) => (
-            <span
-              key={category.id}
-              className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-            >
-              {category.name}
-            </span>
-          ))}
+    <div className="min-h-screen">
+      {/* Hero Section */}
+      <section className="bg-gradient-to-br from-blue-50 to-indigo-100 py-20">
+        <div className="container mx-auto px-4 text-center">
+          <h1 className="text-5xl font-bold mb-4">Welcome to Our Blog</h1>
+          <p className="text-xl text-gray-700 mb-8">
+            Discover insights, stories, and knowledge
+          </p>
+          <Link
+            href="/dashboard"
+            className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition"
+          >
+            Go to Dashboard
+          </Link>
         </div>
-      </div>
+      </section>
 
-      <div className="grid gap-6">
-        {postsData?.items.length === 0 ? (
-          <p className="text-gray-500">No posts yet. Create your first post!</p>
+      {/* Categories */}
+      {categories && categories.length > 0 && (
+        <section className="container mx-auto px-4 py-8">
+          <h2 className="text-2xl font-bold mb-4">Categories</h2>
+          <div className="flex gap-2 flex-wrap">
+            {categories.map((category) => (
+              <Badge key={category.id} variant="secondary" className="text-sm py-2 px-4">
+                {category.name}
+              </Badge>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Blog Posts */}
+      <section className="container mx-auto px-4 py-12">
+        <h2 className="text-3xl font-bold mb-8">Latest Posts</h2>
+        
+        {isLoading ? (
+          <div className="text-center py-12">Loading posts...</div>
+        ) : postsData?.items.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-gray-500">No published posts yet</p>
+          </div>
         ) : (
-          postsData?.items.map((post) => (
-            <div key={post.id} className="border rounded-lg p-6 hover:shadow-lg transition-shadow">
-              <h2 className="text-2xl font-semibold mb-2">{post.title}</h2>
-              <p className="text-gray-600 mb-4">
-                {post.content.substring(0, 150)}...
-              </p>
-              <div className="flex justify-between items-center">
-                <span className="text-sm text-gray-500">
-                  {new Date(post.createdAt).toLocaleDateString()}
-                </span>
-                <span className={`px-2 py-1 text-xs rounded ${
-                  post.published 
-                    ? 'bg-green-100 text-green-800' 
-                    : 'bg-yellow-100 text-yellow-800'
-                }`}>
-                  {post.published ? 'Published' : 'Draft'}
-                </span>
-              </div>
-            </div>
-          ))
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {postsData?.items.map((post) => (
+              <Card key={post.id} className="hover:shadow-lg transition">
+                <CardContent className="pt-6">
+                  <h3 className="text-xl font-semibold mb-2">{post.title}</h3>
+                  <p className="text-gray-600 mb-4">
+                    {post.content.substring(0, 120)}...
+                  </p>
+                  <div className="flex justify-between items-center text-sm text-gray-500">
+                    <span>
+                      {new Date(post.createdAt).toLocaleDateString()}
+                    </span>
+                    <Link
+                      href={`/posts/${post.slug}`}
+                      className="text-blue-600 hover:underline"
+                    >
+                      Read more →
+                    </Link>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         )}
-      </div>
+      </section>
     </div>
   );
 }
