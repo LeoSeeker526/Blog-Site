@@ -3,7 +3,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { httpBatchLink } from "@trpc/client";
 import { createTRPCReact } from "@trpc/react-query";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import superjson from "superjson";
 import type { AppRouter } from "@/server/routers/_app";
 
@@ -22,6 +22,9 @@ export function TRPCProvider({ children }: { children: React.ReactNode }) {
         defaultOptions: {
           queries: {
             staleTime: 30 * 1000,
+            // Disable caching for auth-related queries
+            refetchOnWindowFocus: true,
+            refetchOnMount: true,
           },
         },
       })

@@ -14,9 +14,13 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const utils = trpc.useUtils(); // Add this
 
   const register = trpc.auth.register.useMutation({
     onSuccess: () => {
+      // Clear all cached queries
+      utils.invalidate();
+      
       router.push("/dashboard");
       router.refresh();
     },

@@ -13,9 +13,13 @@ export default function LoginPage() {
   const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const utils = trpc.useUtils(); // Add this
 
   const login = trpc.auth.login.useMutation({
     onSuccess: () => {
+      // Clear all cached queries
+      utils.invalidate();
+      
       router.push("/dashboard");
       router.refresh();
     },

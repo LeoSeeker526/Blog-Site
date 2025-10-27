@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, User } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 
 export default function PostPage() {
@@ -66,8 +66,8 @@ export default function PostPage() {
                   <div className="flex flex-wrap gap-2 mb-4">
                     {post.categories.map((cat: any) => (
                       <Link key={cat.id} href={`/?category=${cat.id}`}>
-                        <Badge 
-                          variant="secondary" 
+                        <Badge
+                          variant="secondary"
                           className="cursor-pointer hover:bg-gray-300"
                         >
                           {cat.name}
@@ -76,9 +76,19 @@ export default function PostPage() {
                     ))}
                   </div>
                 )}
-                
+
                 <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
+                
+                {/* Author and Date */}
+                <div className="flex items-center gap-4 text-sm text-gray-600 pb-4 border-b">
+                  {post.authorUsername && (
+                    <div className="flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      <span className="font-medium">
+                        By {post.authorUsername}
+                      </span>
+                    </div>
+                  )}
                   <time dateTime={post.createdAt.toString()}>
                     {new Date(post.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",

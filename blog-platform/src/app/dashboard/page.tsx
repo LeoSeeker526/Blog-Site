@@ -28,15 +28,14 @@ export default function DashboardPage() {
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const utils = trpc.useUtils();
 
-  // Fetch all posts
-  const { data: postsData, isLoading } = trpc.posts.getAll.useQuery({
+  // Changed: Use getMyPosts instead of getAll
+  const { data: postsData, isLoading } = trpc.posts.getMyPosts.useQuery({
     limit: 50,
   });
 
-  // Delete mutation
   const deletePost = trpc.posts.delete.useMutation({
     onSuccess: () => {
-      utils.posts.getAll.invalidate();
+      utils.posts.getMyPosts.invalidate();
       setDeleteId(null);
     },
   });
@@ -44,7 +43,7 @@ export default function DashboardPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-lg text-gray-500">Loading posts...</div>
+        <div className="text-lg text-gray-500">Loading your posts...</div>
       </div>
     );
   }
@@ -56,7 +55,7 @@ export default function DashboardPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">All Posts</h1>
+          <h1 className="text-3xl font-bold">My Posts</h1>
           <p className="text-gray-600 mt-1">
             Manage your blog posts and drafts
           </p>
@@ -107,12 +106,12 @@ export default function DashboardPage() {
       {/* Posts List */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Posts</CardTitle>
+          <CardTitle>Your Posts</CardTitle>
         </CardHeader>
         <CardContent>
           {posts.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-gray-500 mb-4">No posts yet</p>
+              <p className="text-gray-500 mb-4">You haven't created any posts yet</p>
               <Link href="/dashboard/posts/new">
                 <Button>Create Your First Post</Button>
               </Link>
@@ -136,9 +135,20 @@ export default function DashboardPage() {
                     <p className="text-sm text-gray-600 mt-1">
                       {post.content.substring(0, 100)}...
                     </p>
-                    <p className="text-xs text-gray-400 mt-2">
-                      Created {new Date(post.createdAt).toLocaleDateString()}
-                    </p>
+                    <div className="flex items-center gap-4 mt-2">
+                      <p className="text-xs text-gray-400">
+                        Created {new Date(post.createdAt).toLocaleDateString()}
+                      </p>
+                      {post.categories && post.categories.length > 0 && (
+                        <div className="flex gap-1">
+                          {post.categories.slice(0, 3).map((cat: any) => (
+                            <Badge key={cat.id} variant="outline" className="text-xs">
+                              {cat.name}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <DropdownMenu>
@@ -176,7 +186,7 @@ export default function DashboardPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the
+              This action cannot be undone. This will permanently delete your
               post.
             </AlertDialogDescription>
           </AlertDialogHeader>

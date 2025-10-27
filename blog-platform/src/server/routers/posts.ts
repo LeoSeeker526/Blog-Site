@@ -1,52 +1,145 @@
 import { z } from "zod";
-import { createTRPCRouter, publicProcedure } from "../trpc";
+import { createTRPCRouter, publicProcedure, protectedProcedure } from "../trpc";
 import { posts, postCategories, categories } from "@/db/schema";
 import { eq, desc, inArray } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
+import { users } from "@/db/schema";
 
 export const postsRouter = createTRPCRouter({
   // Get all posts with optional filtering
-  getAll: publicProcedure
+  // Get all posts (public - anyone can view published posts)
+getAll: publicProcedure
+  .input(
+    z
+      .object({
+        published: z.boolean().optional(),
+        categoryId: z.number().optional(), // Keep for backward compatibility
+        categoryIds: z.array(z.number()).optional(), // Add this for multiple categories
+        limit: z.number().min(1).max(100).default(10),
+        cursor: z.number().optional(),
+      })
+      .optional()
+  )
+  .query(async ({ ctx, input }) => {
+    const limit = input?.limit ?? 10;
+    const cursor = input?.cursor;
+
+    let baseQuery = ctx.db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        content: posts.content,
+        slug: posts.slug,
+        published: posts.published,
+        userId: posts.userId,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+      })
+      .from(posts)
+      .$dynamic();
+
+    if (input?.published !== undefined) {
+      baseQuery = baseQuery.where(eq(posts.published, input.published));
+    }
+
+    const postsResult = await baseQuery
+      .orderBy(desc(posts.createdAt))
+      .limit(limit + 1)
+      .offset(cursor ?? 0);
+
+    const postIds = postsResult.map((p) => p.id);
+    
+    let categoriesMap: Record<number, Array<{ id: number; name: string; slug: string }>> = {};
+    
+    if (postIds.length > 0) {
+      const postCategoriesResult = await ctx.db
+        .select({
+          postId: postCategories.postId,
+          categoryId: categories.id,
+          categoryName: categories.name,
+          categorySlug: categories.slug,
+        })
+        .from(postCategories)
+        .innerJoin(categories, eq(postCategories.categoryId, categories.id))
+        .where(inArray(postCategories.postId, postIds));
+
+      postCategoriesResult.forEach((pc) => {
+        if (!categoriesMap[pc.postId]) {
+          categoriesMap[pc.postId] = [];
+        }
+        categoriesMap[pc.postId].push({
+          id: pc.categoryId,
+          name: pc.categoryName,
+          slug: pc.categorySlug,
+        });
+      });
+    }
+
+    let items = postsResult.map((post) => ({
+      ...post,
+      categories: categoriesMap[post.id] || [],
+    }));
+
+    // Filter by multiple categories
+    if (input?.categoryIds && input.categoryIds.length > 0) {
+      items = items.filter((item) =>
+        input.categoryIds!.some((catId) =>
+          item.categories.some((cat) => cat.id === catId)
+        )
+      );
+    }
+    // Fallback to single categoryId for backward compatibility
+    else if (input?.categoryId) {
+      items = items.filter((item) =>
+        item.categories.some((cat) => cat.id === input.categoryId)
+      );
+    }
+
+    let nextCursor: number | undefined = undefined;
+    if (items.length > limit) {
+      items.pop();
+      nextCursor = (cursor ?? 0) + limit;
+    }
+
+    return {
+      items,
+      nextCursor,
+    };
+  }),
+
+
+
+   getMyPosts: protectedProcedure
     .input(
       z
         .object({
-          published: z.boolean().optional(),
-          categoryId: z.number().optional(),
-          limit: z.number().min(1).max(100).default(10),
+          limit: z.number().min(1).max(100).default(50),
           cursor: z.number().optional(),
         })
         .optional()
     )
     .query(async ({ ctx, input }) => {
-      const limit = input?.limit ?? 10;
+      const limit = input?.limit ?? 50;
       const cursor = input?.cursor;
 
-      // Build the base query with conditional where clause
-      let baseQuery = ctx.db
+      // Get only posts by current user
+      const postsResult = await ctx.db
         .select({
           id: posts.id,
           title: posts.title,
           content: posts.content,
           slug: posts.slug,
           published: posts.published,
+          userId: posts.userId,
           createdAt: posts.createdAt,
           updatedAt: posts.updatedAt,
         })
         .from(posts)
-        .$dynamic();
-
-      // Add published filter if specified
-      if (input?.published !== undefined) {
-        baseQuery = baseQuery.where(eq(posts.published, input.published));
-      }
-
-      // Complete the query
-      const postsResult = await baseQuery
+        .where(eq(posts.userId, ctx.userId))
         .orderBy(desc(posts.createdAt))
         .limit(limit + 1)
         .offset(cursor ?? 0);
 
-      // Fetch categories for these posts
       const postIds = postsResult.map((p) => p.id);
       
       let categoriesMap: Record<number, Array<{ id: number; name: string; slug: string }>> = {};
@@ -63,7 +156,6 @@ export const postsRouter = createTRPCRouter({
           .innerJoin(categories, eq(postCategories.categoryId, categories.id))
           .where(inArray(postCategories.postId, postIds));
 
-        // Build categories map
         postCategoriesResult.forEach((pc) => {
           if (!categoriesMap[pc.postId]) {
             categoriesMap[pc.postId] = [];
@@ -76,18 +168,10 @@ export const postsRouter = createTRPCRouter({
         });
       }
 
-      // Combine posts with their categories
       let items = postsResult.map((post) => ({
         ...post,
         categories: categoriesMap[post.id] || [],
       }));
-
-      // Filter by categoryId if provided
-      if (input?.categoryId) {
-        items = items.filter((item) =>
-          item.categories.some((cat) => cat.id === input.categoryId)
-        );
-      }
 
       let nextCursor: number | undefined = undefined;
       if (items.length > limit) {
@@ -101,42 +185,55 @@ export const postsRouter = createTRPCRouter({
       };
     }),
 
-  // Get a single post by slug with categories
-  getBySlug: publicProcedure
-    .input(z.object({ slug: z.string() }))
-    .query(async ({ ctx, input }) => {
-      const postResult = await ctx.db
-        .select()
-        .from(posts)
-        .where(eq(posts.slug, input.slug))
-        .limit(1);
 
-      if (!postResult[0]) {
-        throw new TRPCError({
-          code: "NOT_FOUND",
-          message: "Post not found",
-        });
-      }
+getBySlug: publicProcedure
+  .input(z.object({ slug: z.string() }))
+  .query(async ({ ctx, input }) => {
+    const postResult = await ctx.db
+      .select({
+        id: posts.id,
+        title: posts.title,
+        content: posts.content,
+        slug: posts.slug,
+        published: posts.published,
+        userId: posts.userId,
+        createdAt: posts.createdAt,
+        updatedAt: posts.updatedAt,
+        // Add author info
+        authorId: users.id,
+        authorUsername: users.username,
+      })
+      .from(posts)
+      .leftJoin(users, eq(posts.userId, users.id))
+      .where(eq(posts.slug, input.slug))
+      .limit(1);
 
-      const post = postResult[0];
+    if (!postResult[0]) {
+      throw new TRPCError({
+        code: "NOT_FOUND",
+        message: "Post not found",
+      });
+    }
 
-      // Fetch categories for this post
-      const categoriesResult = await ctx.db
-        .select({
-          id: categories.id,
-          name: categories.name,
-          slug: categories.slug,
-          description: categories.description,
-        })
-        .from(postCategories)
-        .innerJoin(categories, eq(postCategories.categoryId, categories.id))
-        .where(eq(postCategories.postId, post.id));
+    const post = postResult[0];
 
-      return {
-        ...post,
-        categories: categoriesResult,
-      };
-    }),
+    const categoriesResult = await ctx.db
+      .select({
+        id: categories.id,
+        name: categories.name,
+        slug: categories.slug,
+        description: categories.description,
+      })
+      .from(postCategories)
+      .innerJoin(categories, eq(postCategories.categoryId, categories.id))
+      .where(eq(postCategories.postId, post.id));
+
+    return {
+      ...post,
+      categories: categoriesResult,
+    };
+  }),
+
 
   // Get post by ID with categories (for editing)
   getById: publicProcedure

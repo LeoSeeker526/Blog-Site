@@ -7,9 +7,13 @@ import { LogOut } from "lucide-react";
 
 export default function LogoutButton() {
   const router = useRouter();
+  const utils = trpc.useUtils(); // Add this
 
   const logout = trpc.auth.logout.useMutation({
     onSuccess: () => {
+      // Clear all cached queries
+      utils.invalidate();
+      
       router.push("/");
       router.refresh();
     },
